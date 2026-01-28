@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGS İK Sistemi (Tanı Modu)</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';</script>
+
+    <style>
+        /* CSS STYLES */
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        .navbar { background: #2c3e50; color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .nav-btn { background: #34495e; border: 1px solid #7f8c8d; color: white; padding: 5px 10px; cursor: pointer; border-radius: 4px; }
+        .screen { display: none; padding: 20px; height: 100%; overflow-y: auto; }
+        .active-screen { display: block; }
+        .form-container, .admin-container { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .section-header { background: #f8f9fa; padding: 10px; font-weight: bold; color: #2c3e50; border-left: 5px solid #0056b3; margin-top: 20px; text-transform: uppercase; }
+        .form-row { display: flex; gap: 15px; margin-bottom: 10px; }
+        .form-group { flex: 1; display: flex; flex-direction: column; }
+        label { font-size: 0.85rem; font-weight: bold; color: #555; margin-bottom: 5px; }
+        input, select { padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        .submit-btn { width: 100%; padding: 15px; background: #27ae60; color: white; font-weight: bold; border: none; cursor: pointer; font-size: 1rem; margin-top: 20px; }
+        .submit-btn:hover { background: #219150; }
+        .submit-btn:disabled { background: #95a5a6; cursor: wait; }
+        
+        /* LOG BOX FOR DEBUGGING */
+        #debug-log { background: #333; color: #0f0; padding: 15px; margin: 20px auto; width: 90%; max-width: 800px; height: 150px; overflow-y: scroll; font-family: monospace; font-size: 12px; border-radius: 5px; border: 2px solid #555; }
+
+        /* ADMIN TABLE */
+        table.admin-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        table.admin-table th { background: #34495e; color: white; padding: 10px; text-align: left; }
+        table.admin-table td { padding: 10px; border-bottom: 1px solid #eee; }
+        .action-btn { background: #3498db; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+        .delete-btn { background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-left: 5px; }
+
+        /* PDF HIDDEN */
+        #pdf-generator-zone { position: absolute; left: -9999px; top: 0; }
+        .pdf-page { width: 210mm; height: 296mm; padding: 10mm; background: white; position: relative; overflow: hidden; box-sizing: border-box; }
+        #page-1 { page-break-after: always; }
+        table.pdf-table { width: 100%; border-collapse: collapse; border: 2px solid black; table-layout: fixed; }
+        table.pdf-table td { border: 1px solid black; padding: 3px; font-size: 10px; font-weight: bold; vertical-align: middle; height: 18px; overflow: hidden; white-space: nowrap; }
+        .gray-bg { background-color: #d0cece; text-align: center; }
+        .photo-area { background-color: white; text-align: center; vertical-align: top !important; padding: 0; }
+        .user-input { font-weight: normal; font-family: 'Courier New', monospace; text-transform: uppercase; margin-left: 5px; font-size: 10px; }
+        .logo-img { height: 35px; display: block; margin: auto; }
+        #out_photo_img { width: 100%; height: 150px; object-fit: cover; }
+        .attachments-wrapper { display: flex; flex-direction: column; height: 100%; justify-content: space-between; gap: 10px; }
+        .att-item { border: 1px solid #ccc; padding: 5px; display: flex; flex-direction: column; }
+        .att-item-small { height: 25%; } .att-item-large { height: 45%; }
+        .att-content-box { flex-grow: 1; background: #fafafa; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 5px; padding: 5px; }
+        .att-content-box img { max-width: 100%; max-height: 100%; object-fit: contain; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="nav-brand">NGS İK SİSTEMİ (v3.0 Tanı)</div>
+        <div>
+            <button class="nav-btn" onclick="showScreen('client-screen')">Form</button>
+            <button class="nav-btn" onclick="checkAdmin()">Admin</button>
+        </div>
+    </div>
+
+    <div id="debug-log">Sistem Başlatıldı. Loglar burada görünecek...<br></div>
+
+    <div id="client-screen" class="screen active-screen">
+        <div class="form-container">
+            <h2>İş Başvuru Formu</h2>
+            <form id="appForm">
+                <div class="section-header">1. Bilgiler</div>
+                <div class="form-row"><div class="form-group"><label>Fotoğraf</label><input type="file" id="in_photo" accept="image/*"></div>
+                <div class="form-group"><label>Pozisyon</label><input type="text" id="in_pozisyon"></div></div>
+                <div class="form-row"><div class="form-group"><label>Ad</label><input type="text" id="in_ad"></div><div class="form-group"><label>Soyad</label><input type="text" id="in_soyad"></div></div>
+                <div class="form-group" style="margin-top:10px; background:#ffe; padding:10px;"><label>⚠️ Test İçin Sadece Ad/Soyad Yeterlidir. Dosya yüklemeyi deneyin.</label></div>
+
+                <div class="section-header">5. Belge Yükleme</div>
+                <div class="form-group"><label>Pasaport</label><input type="file" id="in_passport_img" accept="image/*"></div>
+                <div class="form-group"><label>Tam Boy Foto</label><input type="file" id="in_fullbody_img" accept="image/*"></div>
+                <div class="form-group"><label>Diploma</label><input type="file" id="in_diploma_img" accept="image/*, application/pdf"></div>
+
+                <button type="button" class="submit-btn" id="submitBtn">BAŞVURUYU GÖNDER</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="admin-screen" class="screen">
+        <div class="admin-container">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h2>Yönetici Paneli</h2>
+                <button onclick="logout()" style="background:#7f8c8d; color:white; border:none; padding:10px;">Çıkış</button>
+            </div>
+            <button onclick="loadFromFirebase()" style="width:100%; background:#3498db; color:white; padding:10px; margin-top:10px;">LİSTEYİ YENİLE (Test)</button>
+            <table class="admin-table">
+                <thead><tr><th>Tarih</th><th>Ad Soyad</th><th>Pozisyon</th><th>İşlem</th></tr></thead>
+                <tbody id="admin-table-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="pdf-generator-zone"><div id="print-container"><div class="pdf-page" id="page-1"><div id="out_today"></div><table class="pdf-table"><tr><td id="out_ad"></td><td id="out_soyad"></td></tr></table><div class="pdf-page" id="page-2"><div class="attachments-wrapper"><div class="att-content-box"><img id="out_passport_img"></div><div class="att-content-box"><img id="out_fullbody_img"></div><div class="att-content-box" id="out_diploma_container"></div></div></div></div></div></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBZM0I_QchjXgw-eAbds2nm3JvcrYPLr9A",
+            authDomain: "ngs-system-97961.firebaseapp.com",
+            projectId: "ngs-system-97961",
+            storageBucket: "ngs-system-97961.firebasestorage.app",
+            messagingSenderId: "65980395830",
+            appId: "1:65980395830:web:00949c5054e028bed30397",
+            measurementId: "G-MCYJFH6D6K"
+        };
+
+        // --- LOGGER FUNCTION ---
+        function log(msg) {
+            const box = document.getElementById('debug-log');
+            const time = new Date().toLocaleTimeString();
+            box.innerHTML += `[${time}] ${msg}<br>`;
+            box.scrollTop = box.scrollHeight;
+            console.log(msg);
+        }
+
+        log("Firebase Başlatılıyor...");
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        log("Firebase Hazır. Domain: " + window.location.hostname);
+
+        window.allApplications = []; 
+
+        window.checkAdmin = function() {
+            log("Admin girişi kontrol ediliyor...");
+            if(sessionStorage.getItem('isAdmin') === 'true') {
+                showScreen('admin-screen');
+                loadFromFirebase();
+                return;
+            }
+            const pass = prompt("Admin Şifresi:");
+            if(pass === "admin123") {
+                sessionStorage.setItem('isAdmin', 'true');
+                showScreen('admin-screen');
+                loadFromFirebase();
+            } else {
+                log("Hatalı şifre girildi.");
+                alert("Hatalı Şifre!");
+            }
+        };
+
+        window.logout = function() {
+            sessionStorage.removeItem('isAdmin');
+            showScreen('client-screen');
+            log("Admin çıkışı yapıldı.");
+        };
+
+        window.showScreen = function(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
+            document.getElementById(screenId).classList.add('active-screen');
+        }
+
+        // --- SUBMIT ---
+        document.getElementById('submitBtn').addEventListener('click', async () => {
+            log("Butona basıldı. İşlem başlıyor...");
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerText = "İşleniyor...";
+
+            try {
+                let formData = {
+                    in_ad: document.getElementById('in_ad').value || "Boş",
+                    in_soyad: document.getElementById('in_soyad').value || "Boş",
+                    in_pozisyon: document.getElementById('in_pozisyon').value || "Boş"
+                };
+
+                log("Resimler sıkıştırılıyor...");
+                
+                const photoArr = await handleFile(document.getElementById('in_photo').files[0]);
+                if(photoArr) { formData.photo = photoArr[0]; log("Vesikalık işlendi (" + photoArr[0].length + " bytes)"); }
+
+                const passArr = await handleFile(document.getElementById('in_passport_img').files[0]);
+                if(passArr) { formData.passport = passArr[0]; log("Pasaport işlendi"); }
+
+                const fullArr = await handleFile(document.getElementById('in_fullbody_img').files[0]);
+                if(fullArr) { formData.fullbody = fullArr[0]; log("Tam Boy işlendi"); }
+
+                const dipArr = await handleFile(document.getElementById('in_diploma_img').files[0]);
+                if(dipArr) { formData.diplomaPages = dipArr; log("Diploma işlendi"); }
+
+                log("Veritabanına gönderiliyor...");
+                
+                await addDoc(collection(db, "applications"), {
+                    date: new Date().toLocaleDateString('tr-TR'),
+                    createdAt: Date.now(),
+                    data: formData
+                });
+
+                log("✅ BAŞARILI! Veri Cloud'a kaydedildi.");
+                alert("BAŞARILI! Başvuru sisteme yüklendi.");
+                document.getElementById('appForm').reset();
+
+            } catch (e) {
+                log("❌ HATA: " + e.message);
+                if(e.message.includes("permission")) {
+                    alert("İZİN HATASI: Veritabanı kuralları (Rules) 'Test Mode' değil veya Domain engellendi.");
+                } else {
+                    alert("HATA: " + e.message);
+                }
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "BAŞVURUYU GÖNDER";
+            }
+        });
+
+        // --- LOAD ---
+        window.loadFromFirebase = async function() {
+            log("Veriler çekiliyor...");
+            const tbody = document.getElementById('admin-table-body');
+            tbody.innerHTML = '<tr><td colspan="4">Yükleniyor...</td></tr>';
+            window.allApplications = [];
+            
+            try {
+                const querySnapshot = await getDocs(collection(db, "applications"));
+                log(`Sorgu tamamlandı. Bulunan kayıt: ${querySnapshot.size}`);
+                tbody.innerHTML = '';
+                
+                if(querySnapshot.empty) {
+                    tbody.innerHTML = '<tr><td colspan="4">Kayıt bulunamadı.</td></tr>';
+                    return;
+                }
+
+                querySnapshot.forEach((doc) => {
+                    const app = doc.data();
+                    app.docId = doc.id;
+                    window.allApplications.push(app);
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td>${app.date}</td><td>${app.data.in_ad} ${app.data.in_soyad}</td><td>${app.data.in_pozisyon}</td>
+                        <td><button onclick="alert('PDF kodu kısaltıldı, bu sadece test içindir.')">PDF</button> <button onclick="deleteFromCloud('${doc.id}')" style="color:red;">SİL</button></td>`;
+                    tbody.appendChild(tr);
+                });
+            } catch(e) {
+                log("❌ VERİ ÇEKME HATASI: " + e.message);
+                tbody.innerHTML = '<tr><td colspan="4" style="color:red;">HATA: ' + e.message + '</td></tr>';
+            }
+        };
+
+        window.deleteFromCloud = async function(docId) {
+            if(confirm("Silmek istediğinize emin misiniz?")) {
+                try {
+                    await deleteDoc(doc(db, "applications", docId));
+                    log("Kayıt silindi: " + docId);
+                    loadFromFirebase();
+                } catch(e) { log("Silme hatası: " + e.message); }
+            }
+        };
+
+        // --- COMPRESSION UTILS ---
+        async function handleFile(file) {
+            if (!file) return null;
+            try {
+                if (file.type.startsWith('image/')) return compressImage(file);
+                if (file.type === 'application/pdf') return convertPdfToImages(file);
+            } catch(e) {
+                log("Dosya işleme hatası: " + e.message);
+            }
+            return null;
+        }
+
+        function compressImage(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const MAX_SIZE = 500; // VERY AGGRESSIVE RESIZE
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } } 
+                        else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
+                        canvas.width = width; canvas.height = height;
+                        ctx.drawImage(img, 0, 0, width, height);
+                        resolve([canvas.toDataURL('image/jpeg', 0.4)]);
+                    };
+                };
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        async function convertPdfToImages(file) {
+            log("PDF dönüştürülüyor...");
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+            const images = [];
+            const maxPages = Math.min(pdf.numPages, 2); // ONLY 2 PAGES MAX
+            for (let i = 1; i <= maxPages; i++) {
+                const page = await pdf.getPage(i);
+                const viewport = page.getViewport({ scale: 0.8 });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                images.push(canvas.toDataURL('image/jpeg', 0.4));
+            }
+            return images;
+        }
+    </script>
+</body>
+</html>
