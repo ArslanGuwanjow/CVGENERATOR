@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NGS İK (HD Kalite)</title>
+    <title>NGS İK (Tam Sığdırma)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';</script>
 
     <style>
-        /* --- STYLES --- */
+        /* --- GLOBAL STYLES --- */
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; display: flex; flex-direction: column; min-height: 100vh; }
         .navbar { background: #2c3e50; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .nav-brand { font-weight: bold; font-size: 1.1rem; }
@@ -59,7 +59,7 @@
         .logo-img { height: 35px; display: block; margin: auto; }
         #out_photo_img { width: 100%; height: 150px; object-fit: cover; }
 
-        /* ATTACHMENT PAGES (Full Visibility) */
+        /* ATTACHMENT PAGES (Absolute Centering Fix) */
         .page-header { text-align:center; font-weight:bold; font-size:16px; border-bottom:2px solid black; margin-bottom:15px; padding-bottom:5px; }
         
         .att-container {
@@ -72,12 +72,13 @@
         }
 
         .att-big-box {
-            flex: 1; /* Each box takes equal height */
+            flex: 1; 
             border: 1px solid #ccc;
             display: flex;
             flex-direction: column;
             background: #fafafa;
-            overflow: hidden; /* Ensures nothing spills out */
+            overflow: hidden;
+            position: relative;
         }
 
         .att-label { 
@@ -88,26 +89,30 @@
             text-align: center; 
             border-bottom: 1px solid #ddd; 
             flex-shrink: 0;
+            z-index: 10;
         }
         
+        /* STRICT IMAGE CONTAINER */
         .att-content { 
-            flex-grow: 1; 
-            padding: 5px; 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: white;
+            flex-grow: 1;
             position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
         }
         
-        /* CRITICAL FIX: Ensure image is never cut off */
+        /* FORCE IMAGE CENTER & FIT */
         .att-content img { 
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%); /* Perfectly center */
+            max-width: 95%;  /* Leave 5% breathing room */
+            max-height: 95%; /* Leave 5% breathing room */
             width: auto;
             height: auto;
-            max-width: 100%; 
-            max-height: 100%; 
-            object-fit: contain; /* Shrinks image to fit INSIDE the box fully */
-            display: block;
+            object-fit: contain;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
         }
 
     </style>
@@ -115,7 +120,7 @@
 <body>
 
     <div class="navbar">
-        <div class="nav-brand">Global Danismanlik</div>
+        <div class="nav-brand">NGS İK (V3 Perfect Fit)</div>
         <div>
             <button class="nav-btn" onclick="showScreen('client-screen')">Form</button>
             <button class="nav-btn" onclick="checkAdmin()">Admin</button>
@@ -149,7 +154,7 @@
                 <div class="form-group"><label>Yetenekler</label><input type="text" id="in_skills"></div>
                 <div class="form-group"><label>Sabıka Kaydı</label><input type="text" id="in_sabika"></div>
                 <div class="form-group"><label>Kronik Hastalık</label><input type="text" id="in_hastalik"></div>
-                <div class="section-header" style="background:#fff3cd; border-left-color:#ffc107;">5. Belge Yükleme (HD Kalite)</div>
+                <div class="section-header" style="background:#fff3cd; border-left-color:#ffc107;">5. Belge Yükleme (Tam Görünüm)</div>
                 <div class="form-row"><div class="form-group"><label>1. Pasaport</label><input type="file" id="in_passport_img" accept="image/*"></div><div class="form-group"><label>2. Tam Boy Foto</label><input type="file" id="in_fullbody_img" accept="image/*"></div></div>
                 <div class="form-row"><div class="form-group"><label>3. Diploma (Lise 1)</label><input type="file" id="in_diploma_img" accept="image/*, application/pdf"></div><div class="form-group"><label>4. Lise 2 / Transkript</label><input type="file" id="in_diploma2_img" accept="image/*, application/pdf"></div></div>
                 <div class="form-row"><div class="form-group"><label>5. Ehliyet</label><input type="file" id="in_driver_img" accept="image/*"></div><div class="form-group"><label>6. Sertifika</label><input type="file" id="in_cert_img" accept="image/*, application/pdf"></div></div>
@@ -256,7 +261,6 @@
                 let mainData = {};
                 textIds.forEach(id => mainData[id] = document.getElementById(id).value);
 
-                // --- PROCESS ALL IMAGES (Higher Res) ---
                 const photoArr = await handleFile(document.getElementById('in_photo').files[0]);
                 const passArr = await handleFile(document.getElementById('in_passport_img').files[0]);
                 const fullArr = await handleFile(document.getElementById('in_fullbody_img').files[0]);
@@ -362,7 +366,6 @@
             return null;
         }
 
-        // --- HIGH QUALITY COMPRESSION (1600px, 0.8) ---
         function compressImage(file) {
             return new Promise((resolve) => {
                 const reader = new FileReader();
@@ -372,12 +375,12 @@
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
-                        const MAX = 1600; // INCREASED RES
+                        const MAX = 1600; 
                         let w = img.width, h = img.height;
                         if(w>h) { if(w>MAX){ h*=MAX/w; w=MAX; }} else { if(h>MAX){ w*=MAX/h; h=MAX; }}
                         canvas.width=w; canvas.height=h;
                         ctx.drawImage(img,0,0,w,h);
-                        resolve([canvas.toDataURL('image/jpeg', 0.8)]); // INCREASED QUALITY
+                        resolve([canvas.toDataURL('image/jpeg', 0.8)]);
                     };
                 };
                 reader.readAsDataURL(file);
@@ -391,7 +394,7 @@
             const max = Math.min(pdf.numPages, 1);
             for(let i=1; i<=max; i++){
                 const page = await pdf.getPage(i);
-                const vp = page.getViewport({scale:1.5}); // INCREASED SCALE
+                const vp = page.getViewport({scale:1.5});
                 const c = document.createElement('canvas');
                 c.width=vp.width; c.height=vp.height;
                 await page.render({canvasContext:c.getContext('2d'), viewport:vp}).promise;
@@ -420,7 +423,7 @@
             }
             document.getElementById('out_today').innerText = dateStr;
 
-            // Clear & Fill
+            // CLEAR
             document.getElementById('out_photo_img').style.display='none'; document.getElementById('p_txt').style.display='block';
             document.getElementById('out_passport_img').src=''; document.getElementById('out_fullbody_img').src=''; document.getElementById('out_driver_img').src='';
             ['out_diploma_container','out_diploma2_container','out_cert_container'].forEach(id => document.getElementById(id).innerHTML='');
@@ -440,12 +443,11 @@
                 margin: 0, 
                 filename: `Basvuru_${data.in_ad}.pdf`, 
                 image: { type: 'jpeg', quality: 0.98 }, 
-                html2canvas: { scale: 4, useCORS: true }, // SCALE 4 = SHARP TEXT
+                html2canvas: { scale: 4, useCORS: true }, 
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
             };
             html2pdf().set(opt).from(document.getElementById('print-container')).save();
         }
     </script>
 </body>
-
 </html>
